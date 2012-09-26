@@ -17,8 +17,9 @@
 			var scene1 = b();
 			
 			var block = new Array();
+			var turret = new Array();
 			
-			// A* implementation from http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
+			// A* implementation based on http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
 			
 			function successors(x, y, grid, rows, cols){
 				var
@@ -40,8 +41,14 @@
 				return result;
 			}
 			
-			function distance(start, end, f1, f2) {
-        		return f1(start.x - end.x) + f1(start.y - end.y);
+			function distance(start, end) {
+				// divide weight by turret distance
+				var risk = 0;
+				for (var t in turret) {
+					var d = t.data();
+					risk += Math.sqrt(Math.pow(start.x - d.x, 2) + Math.pow(start.y - d.y, 2))
+				}
+        		return Math.abs(start.x - end.x) + Math.abs(start.y - end.y)/risk;
     		}
 					
 			function AStar(grid, start, end) {
@@ -49,8 +56,6 @@
 					cols = grid[0].length,
 					rows = grid.length,
 					limit = cols * rows,
-					f1 = Math.abs,
-					f2 = Math.max,
 					list = {},
 					result = [],
 					open = [{x:start[0], y:start[1], f:0, g:0, v:start[0]+start[1]*cols}],
@@ -77,7 +82,7 @@
 							adj.f = adj.g = 0;
 							adj.v = adj.x + adj.y * cols;
 							if(!(adj.v in list)){
-								adj.f = (adj.g = current.g + distance(adj, current, f1, f2)) + distance(adj, end, f1, f2);
+								adj.f = (adj.g = current.g + distance(adj, current)) + distance(adj, end);
 								open[length++] = adj;
 								list[adj.v] = 1;
 							}
