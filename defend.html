@@ -16,12 +16,37 @@
 			var height = 480;
 			var scene1 = b();
 			
-			var block = new Array();
+			var precision = 4;
+			
+			var block = new Array(); // this will be preset, arrays of rectangles
 			var turret = new Array();
+			var grid = new Array(); // height vs width
+			
+			function Rectangle(x1, y1, x2, y2) {
+				this.x1 = x1;
+				this.y1 = y1;
+				this.x2 = x2;
+				this.y2 = y2;
+			}
+			
+			// create grid
+			grid = new Array(height/precision);
+			for (var i=0; i<height/precision; i++) {
+				grid[i] = new Array(width/precision);
+				for (var j=0; j<width/precision; j++)
+					grid[i][j] = false;
+			}
+			// fill with blocks
+			for (var b in block) {
+				for (var y=block.y1/precision; y<block.y2/precision; y++) {
+					for (var x=block.x1/precision; x<block.x2/precision; x++)
+						block[y][x] = true;
+				}		
+			}
 			
 			// A* implementation based on http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
 			
-			function successors(x, y, grid, rows, cols){
+			function successors(x, y, rows, cols){
 				var
 					N = y - 1,
 					S = y + 1,
@@ -51,7 +76,7 @@
         		return Math.abs(start.x - end.x) + Math.abs(start.y - end.y)/risk;
     		}
 					
-			function AStar(grid, start, end) {
+			function AStar(start, end) {
 				var
 					cols = grid[0].length,
 					rows = grid.length,
