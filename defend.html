@@ -18,6 +18,8 @@
 			
 			var precision = 4;
 			
+			var target = [0, 0];
+			
 			var block = new Array(); // this will be preset, arrays of rectangles
 			var turret = new Array();
 			var grid = new Array(); // height vs width
@@ -38,9 +40,9 @@
 			}
 			// fill with blocks
 			for (var b in block) {
-				for (var y=block.y1/precision; y<block.y2/precision; y++) {
-					for (var x=block.x1/precision; x<block.x2/precision; x++)
-						block[y][x] = true;
+				for (var y=b.y1/precision; y<b.y2/precision; y++) {
+					for (var x=b.x1/precision; x<b.x2/precision; x++)
+						grid[y][x] = true;
 				}		
 			}
 			
@@ -121,6 +123,17 @@
 					}
 				} while (length);
 				return result;
+			}
+			
+			var boxModifer = function(t) {
+				var speed = 1;
+				var next = AStar([Math.floor(this.x/precision), Math.floor(this.y/precison)], target)[0];
+				this.x = (next.x - this.x)*speed;
+				this.y = (next.y - this.y)*speed;
+			}
+			
+			function box() {
+				return b().rect([0, 0], [precision, precision]).fill('#000').modify(boxModifier);
 			}
 			
             function start() {
