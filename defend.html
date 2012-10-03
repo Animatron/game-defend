@@ -125,18 +125,20 @@
 				return result;
 			}
 			
-			var boxModifer = function(t) {
+			var boxModifier = function(t) {
 				var speed = 1;
-				var next = AStar([Math.floor(this.x/precision), Math.floor(this.y/precison)], target)[0];
+				var next = AStar([Math.floor(this.x/precision), Math.floor(this.y/precision)], target)[0];
+				console.log(this.x, this.y, next);
 				this.x = (next.x - this.x)*speed;
 				this.y = (next.y - this.y)*speed;
 			}
 			
-			function box() {
-				return b().rect([0, 0], [precision, precision]).fill('#000').modify(boxModifier);
+			function box(xi, yi) {
+				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').move([xi, yi]).modify(boxModifier);
 			}
 			
             function start() {
+				scene1.add(box(400, 400));
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene1).play();
             }
