@@ -75,7 +75,7 @@
 					var d = t.data();
 					risk += Math.sqrt(Math.pow(start.x - d.x, 2) + Math.pow(start.y - d.y, 2))
 				}
-        		return Math.abs(start.x - end.x) + Math.abs(start.y - end.y)/risk;
+        		return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) / (risk+1);
     		}
 					
 			function AStar(start, end) {
@@ -128,13 +128,14 @@
 			var boxModifier = function(t) {
 				var speed = 1;
 				var next = AStar([Math.floor(this.x/precision), Math.floor(this.y/precision)], target)[0];
-				console.log(this.x, this.y, next);
-				this.x = (next.x - this.x)*speed;
-				this.y = (next.y - this.y)*speed;
+				//console.log(b(this.$).data().x, b(this.$).data().y, this.x, this.y, next);
+				this.x = b(this.$).data().x + (next[0] - b(this.$).data().x)*speed;
+				this.y = b(this.$).data().y + (next[1] - b(this.$).data().y)*speed;
+				b(this.$).data({'x':this.x, 'y':this.y});
 			}
 			
 			function box(xi, yi) {
-				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').move([xi, yi]).modify(boxModifier);
+				return b().rect([xi+precision/2, yi+precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi}).modify(boxModifier);
 			}
 			
             function start() {
