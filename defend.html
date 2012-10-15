@@ -20,10 +20,6 @@
 			
 			var target = [0, 0];
 			
-			var block = new Array(); // this will be preset, arrays of rectangles
-			var turret = new Array();
-			var grid = new Array(); // height vs width
-			
 			function Rectangle(x1, y1, x2, y2) {
 				this.x1 = x1;
 				this.y1 = y1;
@@ -31,20 +27,28 @@
 				this.y2 = y2;
 			}
 			
+			var block = [new Rectangle(64, 48, 128, 160)]; // this will be preset, arrays of rectangles
+			var turret = new Array();
+			var grid = new Array(); // height vs width
+			
 			// create grid
 			grid = new Array(height/precision);
 			for (var i=0; i<height/precision; i++) {
 				grid[i] = new Array(width/precision);
 				for (var j=0; j<width/precision; j++)
-					grid[i][j] = false;
+					grid[i][j] = 0;
 			}
 			// fill with blocks
-			for (var b in block) {
-				for (var y=b.y1/precision; y<b.y2/precision; y++) {
-					for (var x=b.x1/precision; x<b.x2/precision; x++)
-						grid[y][x] = true;
-				}		
+			for (var i=0; i<block.length; i++) {
+				var k = block[i];
+				for (var y=k.y1/precision; y<k.y2/precision; y++) {
+					for (var x=k.x1/precision; x<k.x2/precision; x++)
+						grid[y][x] = 1;
+				}
 			}
+			
+			//for (var i=0; i<height/precision; i++)
+			//	console.log(grid[i]);
 			
 			// A* implementation based on http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
 			
@@ -128,7 +132,7 @@
 			var boxModifier = function(t) {
 				var speed = 1;
 				var next = AStar([Math.floor(this.x/precision), Math.floor(this.y/precision)], target)[0];
-				//console.log(b(this.$).data().x, b(this.$).data().y, this.x, this.y, next);
+				console.log(b(this.$).data().x, b(this.$).data().y, this.x, this.y, next);
 				this.x = b(this.$).data().x + (next[0] - b(this.$).data().x)*speed;
 				this.y = b(this.$).data().y + (next[1] - b(this.$).data().y)*speed;
 				b(this.$).data({'x':this.x, 'y':this.y});
