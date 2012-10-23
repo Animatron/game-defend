@@ -18,9 +18,10 @@
 			
 			var precision = 4;
 			
+			var spawn = [400, 400];
 			var target = [0, 0];
 			
-			var flag = false;
+			var path;
 			
 			function Rectangle(x1, y1, x2, y2) {
 				this.x1 = x1;
@@ -48,9 +49,6 @@
 						grid[y][x] = 1;
 				}
 			}
-			
-			//for (var i=0; i<height/precision; i++)
-			//	console.log(grid[i]);
 			
 			// A* implementation based on http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
 			
@@ -133,25 +131,29 @@
 			}
 			
 			var boxModifier = function(t) {
-				if (!flag) {
 				var speed = 1;
 				var x = b(this.$).data().x;
 				var y = b(this.$).data().y;
-				var next = AStar([Math.floor(x/precision), Math.floor(y/precision)], target);
-				flag = true;
-					console.log(x, y, this.x, this.y, next[1]);
-				this.x = x + (next[1][0]*precision - x)*speed;
-				this.y = y + (next[1][1]*precision - y)*speed;
-				b(this.$).data({'x':this.x, 'y':this.y});
+				var index = b(this.$).data().i + speed/precision; //TODO: re-determine if dirty
+				var i = Math.ceil(index);
+				if (i < path.length) {
+					this.x = x + (path[i][0]*precision - x)*speed;
+					this.y = y + (path[i][1]*precision - y)*speed;
+					b(this.$).data({'x':this.x, 'y':this.y, 'i':index});
+					console.log(index, this.x, this.y);
 				}
 			}
 			
 			function box(xi, yi) {
-				return b().rect([xi+precision/2, yi+precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi}).modify(boxModifier);
+				return b().rect([xi+precision/2, yi+precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'i':0}).modify(boxModifier);
 			}
 			
             function start() {
-				scene1.add(box(400, 400));
+				path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+				scene1.add(box(spawn[0], spawn[1]));
+				
+				//for (var i=0; i<path.length; i++)
+				//	console.log(path[i]);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene1).play();
             }
