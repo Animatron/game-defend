@@ -30,7 +30,7 @@
 				this.y2 = y2;
 			}
 			
-			var block = [new Rectangle(64, 48, 128, 160)]; // this will be preset, arrays of rectangles
+			var block = [new Rectangle(48, 0, 128, 160)]; // this will be preset, arrays of rectangles
 			var turret = new Array();
 			var grid = new Array(); // height vs width
 			
@@ -137,15 +137,17 @@
 				var index = b(this.$).data().i + speed/precision; //TODO: re-determine if dirty
 				var i = Math.ceil(index);
 				if (i < path.length) {
-					this.x = x + (path[i][0]*precision - x)*speed;
-					this.y = y + (path[i][1]*precision - y)*speed;
+					var xdif = path[i][0]*precision - x;
+					var ydif = path[i][1]*precision - y;
+					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
+					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
 					b(this.$).data({'x':this.x, 'y':this.y, 'i':index});
-					console.log(index, this.x, this.y);
+					//console.log(index, this.x, this.y);
 				}
 			}
 			
 			function box(xi, yi) {
-				return b().rect([xi+precision/2, yi+precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'i':0}).modify(boxModifier);
+				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'i':0}).modify(boxModifier);
 			}
 			
             function start() {
