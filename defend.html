@@ -16,7 +16,7 @@
 			var height = 480;
 			var scene1 = b();
 			
-			var precision = 4;
+			var precision = 16;
 			
 			var spawn = [400, 400];
 			var target = [0, 0];
@@ -76,10 +76,11 @@
 				// divide weight by turret distance
 				var risk = 0;
 				if (turret.length > 0)
-				for (var t in turret) {
-					var d = t.data();
-					risk += Math.sqrt(Math.pow(start.x - d.x, 2) + Math.pow(start.y - d.y, 2))
+				for (var i=0; i<turret.length; i++) {
+					var d = turret[i].data();
+					risk += Math.sqrt(Math.pow(start.x - d.x, 2) + Math.pow(start.y - d.y, 2));
 				}
+				//console.log(turret.length, start.x, start.y, end.x, end.y, risk);
         		return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) / (risk+1);
     		}
 					
@@ -134,28 +135,44 @@
 				var speed = 1;
 				var x = b(this.$).data().x;
 				var y = b(this.$).data().y;
-				var index = b(this.$).data().i + speed/precision; //TODO: re-determine if dirty
+				var index = b(this.$).data().i + speed/precision;
+				var p = b(this.$).data().path;
 				var i = Math.ceil(index);
-				if (i < path.length) {
-					var xdif = path[i][0]*precision - x;
-					var ydif = path[i][1]*precision - y;
+				if (i < p.length) {
+					var xdif = p[i][0]*precision - x;
+					var ydif = p[i][1]*precision - y;
 					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
 					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
-					b(this.$).data({'x':this.x, 'y':this.y, 'i':index});
+					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p});
 					//console.log(index, this.x, this.y);
 				}
 			}
 			
-			function box(xi, yi) {
-				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'i':0}).modify(boxModifier);
+			var turretModifier = function(t) {
+			}
+			
+			function initEnemy(xi, yi) {
+				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'path':path, 'i':0}).modify(boxModifier);
+			}
+			
+			function initTurret(xi, yi) {
+				var x = Math.round(xi/precision)*precision;
+				var y = Math.round(yi/precision)*precision;
+				var t = b().circle([x, y], precision/2).fill('#f00').nostroke().data({'x':x, 'y':y, 'level':0}).modify(turretModifier);
+				turret.push(t);
+				return t;
 			}
 			
             function start() {
 				path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-				scene1.add(box(spawn[0], spawn[1]));
+				scene1.add(initEnemy(spawn[0], spawn[1]));
 				
-				//for (var i=0; i<path.length; i++)
-				//	console.log(path[i]);
+				scene1.on(C.X_MCLICK, function(evt) {
+					scene1.add(initTurret(evt.pos[0], evt.pos[1]));
+					path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+					
+					scene1.add(initEnemy(spawn[0], spawn[1]));
+				});
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene1).play();
             }
