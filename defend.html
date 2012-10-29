@@ -5,6 +5,7 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<script src="../player/vendor/matrix.js" type="text/javascript"></script>
 		<script src="../player/anm.player.js" type="text/javascript"></script>
+        <script src="../player/anm.collisions.js" type="text/javascript"></script>
 		<script src="../player/anm.builder.js" type="text/javascript"></script>
 		<script src="../player/animatron_import.js" type="text/javascript"></script>
 
@@ -31,7 +32,9 @@
 			}
 			
 			var block = [new Rectangle(48, 0, 128, 160)]; // this will be preset, arrays of rectangles
+			var enemy = new Array();
 			var turret = new Array();
+			var bullet = new Array();
 			var grid = new Array(); // height vs width
 			
 			// create grid
@@ -78,7 +81,7 @@
 				if (turret.length > 0)
 				for (var i=0; i<turret.length; i++) {
 					var d = turret[i].data();
-					risk += Math.sqrt(Math.pow(start.x - d.x, 2) + Math.pow(start.y - d.y, 2));
+					risk += Math.sqrt(Math.pow(end.x - d.x, 2) + Math.pow(end.y - d.y, 2));
 				}
 				//console.log(turret.length, start.x, start.y, end.x, end.y, risk);
         		return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) / (risk+1);
@@ -149,17 +152,55 @@
 			}
 			
 			var turretModifier = function(t) {
+				var d = b(this.$).data();
+				if (Math.floor(t) != Math.floor(d.t) && enemy.length > 0) {
+					// find nearest
+					var e;
+					var f = width * height * width * height;
+					for (var i=0; i<enemy.length; i++) {
+						var g = Math.pow(enemy[i].data().x - d.x, 2) + Math.pow(enemy[i].data().y - d.y, 2);
+						if (g < f) {
+							f = g;
+							e = enemy[i];
+						}
+					}
+					var a = Math.atan2(e.data().y - d.y, e.data().x - d.x);
+					scene1.add(initBullet(d.x, d.y, Math.cos(a), Math.sin(a)));
+				}
+				b(this.$).data({'x':d.x, 'y':d.y, 'level':0, 't':t});
+			}
+			
+			var bulletModifier = function(t) {
+				var d = b(this.$).data();
+				this.x = d.x + d.vx;
+				this.y = d.y + d.vy;
+				for (var i=0; i<enemy.length; i++) {
+					if (this.$.intersects(enemy[i].v)) {
+						// TODO: remove this
+						// TODO: damage other
+						console.log("hit");
+					}
+				}
+				b(this.$).data({'x':this.x, 'y':this.y, 'vx':d.vx, 'vy':d.vy, 'damage':d.damage});
 			}
 			
 			function initEnemy(xi, yi) {
-				return b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'path':path, 'i':0}).modify(boxModifier);
+				var t = b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'hp':3, 'path':path, 'i':0}).modify(boxModifier);
+				enemy.push(t);
+				return t;
 			}
 			
 			function initTurret(xi, yi) {
 				var x = Math.round(xi/precision)*precision;
 				var y = Math.round(yi/precision)*precision;
-				var t = b().circle([x, y], precision/2).fill('#f00').nostroke().data({'x':x, 'y':y, 'level':0}).modify(turretModifier);
+				var t = b().circle([x, y], precision/2).fill('#f00').nostroke().data({'x':x, 'y':y, 'level':0, 't':0}).modify(turretModifier);
 				turret.push(t);
+				return t;
+			}
+			
+			function initBullet(xi, yi, vx, vy) {
+				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':0}).modify(bulletModifier);
+				bullet.push(t);
 				return t;
 			}
 			
