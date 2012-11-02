@@ -34,7 +34,6 @@
 			var block = [new Rectangle(48, 0, 128, 160)]; // this will be preset, arrays of rectangles
 			var enemy = new Array();
 			var turret = new Array();
-			var bullet = new Array();
 			var grid = new Array(); // height vs width
 			
 			// create grid
@@ -177,10 +176,7 @@
 				for (var i=0; i<enemy.length; i++) {
 					if (this.$.intersects(enemy[i].v)) {
 						// TODO: remove this
-						console.log(bullet.indexOf(b(this.$)), bullet);
 						scene1.remove(this.$);
-						bullet.splice(bullet.indexOf(b(this.$)), 1);
-						console.log(bullet);
 						// TODO: damage other
 						//console.log("hit");
 					}
@@ -204,8 +200,6 @@
 			
 			function initBullet(xi, yi, vx, vy) {
 				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':0}).modify(bulletModifier);
-				bullet.push(t);
-				console.log("!!!", bullet);
 				return t;
 			}
 			
