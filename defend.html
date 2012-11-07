@@ -15,7 +15,10 @@
 			// canvas
 			var width = 640;
 			var height = 480;
-			var scene1 = b();
+			
+			var scene = b();
+			var main = b();
+			var health;
 			
 			var precision = 16;
 			
@@ -133,19 +136,38 @@
 				return result;
 			}
 			
-			var boxModifier = function(t) {
+			function healthBars() {
+				var w = 16;
+				var h = 2;
+				var o = 32;
+				return b().paint(function(ctx) {
+					for (var i=0; i<enemy.length; i++) {
+						var d = enemy[i].data();
+						ctx.strokeStyle = '#000';
+						ctx.strokeRect(d.x, d.y - o, w, h);
+						var fx = d.hp*w/d.mhp;
+						ctx.fillStyle = '#0f0';
+						ctx.fillRect(d.x, d.y - o, fx, h);
+						ctx.fillStyle = '#f00';
+						ctx.fillRect(d.x + fx, d.y - o, w - fx, h);
+					}
+				});
+			}
+			
+			var enemyModifier = function(t) {
 				var speed = 1;
-				var x = b(this.$).data().x;
-				var y = b(this.$).data().y;
-				var index = b(this.$).data().i + speed/precision;
-				var p = b(this.$).data().path;
+				var d = b(this.$).data();
+				var x = d.x;
+				var y = d.y;
+				var index = d.i + speed/precision;
+				var p = d.path;
 				var i = Math.ceil(index);
 				if (i < p.length) {
 					var xdif = p[i][0]*precision - x;
 					var ydif = p[i][1]*precision - y;
 					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
 					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
-					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p});
+					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'mhp':d.mhp, 'hp':d.hp});
 					//console.log(index, this.x, this.y);
 				}
 			}
@@ -164,7 +186,7 @@
 						}
 					}
 					var a = Math.atan2(e.data().y - d.y, e.data().x - d.x);
-					scene1.add(initBullet(d.x, d.y, Math.cos(a), Math.sin(a)));
+					main.add(initBullet(d.x, d.y, Math.cos(a), Math.sin(a)));
 				}
 				b(this.$).data({'x':d.x, 'y':d.y, 'level':0, 't':t});
 			}
@@ -175,17 +197,24 @@
 				this.y = d.y + d.vy;
 				for (var i=0; i<enemy.length; i++) {
 					if (this.$.intersects(enemy[i].v)) {
-						// TODO: remove this
-						scene1.remove(this.$);
-						// TODO: damage other
-						//console.log("hit");
+						main.remove(this.$);
+						// damage other
+						var e = enemy[i].data();
+						//console.log(i, "hp at", e.hp - d.damage);
+						if (e.hp - d.damage > 0)
+							enemy[i].data({'x':e.x, 'y':e.y, 'i':e.i, 'path':e.path, 'mhp':e.mhp, 'hp':e.hp - d.damage});
+						else {
+							main.remove(enemy[i]);
+							enemy.splice(i, 1);
+							i--;
+						}
 					}
 				}
 				b(this.$).data({'x':this.x, 'y':this.y, 'vx':d.vx, 'vy':d.vy, 'damage':d.damage});
 			}
 			
 			function initEnemy(xi, yi) {
-				var t = b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'hp':3, 'path':path, 'i':0}).modify(boxModifier);
+				var t = b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'mhp':3, 'hp':3, 'path':path, 'i':0}).modify(enemyModifier);
 				enemy.push(t);
 				return t;
 			}
@@ -199,22 +228,27 @@
 			}
 			
 			function initBullet(xi, yi, vx, vy) {
-				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':0}).modify(bulletModifier);
+				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
 				return t;
 			}
 			
             function start() {
 				path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-				scene1.add(initEnemy(spawn[0], spawn[1]));
+				main.add(initEnemy(spawn[0], spawn[1]));
 				
-				scene1.on(C.X_MCLICK, function(evt) {
-					scene1.add(initTurret(evt.pos[0], evt.pos[1]));
+				main.on(C.X_MCLICK, function(evt) {
+					main.add(initTurret(evt.pos[0], evt.pos[1]));
 					path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
 					
-					scene1.add(initEnemy(spawn[0], spawn[1]));
+					main.add(initEnemy(spawn[0], spawn[1]));
 				});
 				
-				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene1).play();
+				health = healthBars();
+				
+				scene.add(main);
+				scene.add(health);
+				
+				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
             }
         </script>
       </head>
