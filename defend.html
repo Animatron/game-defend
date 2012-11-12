@@ -20,6 +20,8 @@
 			var main = b();
 			var health;
 			
+			var points = 3;
+			
 			var precision = 16;
 			
 			var spawn = [400, 400];
@@ -174,7 +176,8 @@
 			
 			var turretModifier = function(t) {
 				var d = b(this.$).data();
-				if (Math.floor(t) != Math.floor(d.t) && enemy.length > 0) {
+				var nt = d.t;
+				if (t - d.t >= 2/d.level && enemy.length > 0) {
 					// find nearest
 					var e;
 					var f = width * height * width * height;
@@ -185,10 +188,11 @@
 							e = enemy[i];
 						}
 					}
-					var a = Math.atan2(e.data().y - d.y, e.data().x - d.x);
+					var a = Math.atan2(e.data().y - d.y + precision/2, e.data().x - d.x + precision/2);
 					main.add(initBullet(d.x, d.y, Math.cos(a), Math.sin(a)));
+					nt = t;
 				}
-				b(this.$).data({'x':d.x, 'y':d.y, 'level':0, 't':t});
+				b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 't':nt});
 			}
 			
 			var bulletModifier = function(t) {
@@ -207,6 +211,8 @@
 							main.remove(enemy[i]);
 							enemy.splice(i, 1);
 							i--;
+							// add points
+							points++;
 						}
 					}
 				}
@@ -219,15 +225,13 @@
 				return t;
 			}
 			
-			function initTurret(xi, yi) {
-				var x = Math.round(xi/precision)*precision;
-				var y = Math.round(yi/precision)*precision;
-				var t = b().circle([x, y], precision/2).fill('#f00').nostroke().data({'x':x, 'y':y, 'level':0, 't':0}).modify(turretModifier);
+			function initTurret(xi, yi, l) {
+				var t = b().circle([xi, yi], precision/2).fill('#f00').nostroke().data({'x':xi, 'y':yi, 'level':l, 't':0}).modify(turretModifier);
 				turret.push(t);
 				return t;
 			}
 			
-			function initBullet(xi, yi, vx, vy) {
+			function initBullet(xi, yi, vx, vy, d) {
 				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
 				return t;
 			}
@@ -237,10 +241,32 @@
 				main.add(initEnemy(spawn[0], spawn[1]));
 				
 				main.on(C.X_MCLICK, function(evt) {
-					main.add(initTurret(evt.pos[0], evt.pos[1]));
-					path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-					
-					main.add(initEnemy(spawn[0], spawn[1]));
+					if (points > 0) {
+						var x = Math.round(evt.pos[0]/precision)*precision;
+						var y = Math.round(evt.pos[1]/precision)*precision;
+						
+						var same = -1;
+						for (var i=0; i<turret.length; i++) {
+							var d = turret[i].data();
+							if (x == d.x && y == d.y) {
+								same = i;
+								break;
+							}
+						}
+						
+						if (same == -1) {
+							main.add(initTurret(x, y, 1));
+						} else {
+							var d = turret[same].data();
+							turret[same].data({'x':d.x, 'y':d.y, 'level':d.level+1, 't':d.t});
+						}
+						
+						// test code
+						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+						main.add(initEnemy(spawn[0], spawn[1]));
+						
+						points--;
+					}
 				});
 				
 				health = healthBars();
