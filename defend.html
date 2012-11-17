@@ -21,7 +21,10 @@
 			var health;
 			
 			var points = 3;
+			var wave = 0;
+			var nextRound = 1;
 			
+			var maxLevel = 5;
 			var precision = 16;
 			
 			var spawn = [400, 400];
@@ -156,6 +159,19 @@
 				});
 			}
 			
+			var mainModifer = function(t) {
+				if (t >= nextRound) {
+					var n = Math.round((Math.pow(1.618, wave) - Math.pow(-.618, wave))/2.236);
+					for (var i=0; i<n; i++) {
+						// spawn enemies
+						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+						main.add(initEnemy(spawn[0], spawn[1]));
+					}
+					nextRound += wave;
+					wave++;
+				}
+			}
+			
 			var enemyModifier = function(t) {
 				var speed = 1;
 				var d = b(this.$).data();
@@ -216,6 +232,8 @@
 						}
 					}
 				}
+				if (this.x <= -2 || this.y <= -2 || this.x >= width+2 || this.y >= height+2)
+					main.remove(this.$);
 				b(this.$).data({'x':this.x, 'y':this.y, 'vx':d.vx, 'vy':d.vy, 'damage':d.damage});
 			}
 			
@@ -258,12 +276,11 @@
 							main.add(initTurret(x, y, 1));
 						} else {
 							var d = turret[same].data();
-							turret[same].data({'x':d.x, 'y':d.y, 'level':d.level+1, 't':d.t});
+							if (d.level < maxLevel)
+								turret[same].data({'x':d.x, 'y':d.y, 'level':d.level+1, 't':d.t});
+							else
+								points++;
 						}
-						
-						// test code
-						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-						main.add(initEnemy(spawn[0], spawn[1]));
 						
 						points--;
 					}
