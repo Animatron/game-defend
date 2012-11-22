@@ -22,6 +22,10 @@
 			
 			var points = 3;
 			var wave = 0;
+			var waveCount = 0;
+			var nextSpawn = 1;
+			var spawnCount = 0;
+			var lastRound = 0;
 			var nextRound = 1;
 			
 			var maxLevel = 5;
@@ -160,15 +164,24 @@
 			}
 			
 			var mainModifer = function(t) {
+				//console.log(t, nextRound, wave);
+				var rate = 2/3;
 				if (t >= nextRound) {
-					var n = Math.round((Math.pow(1.618, wave) - Math.pow(-.618, wave))/2.236);
-					for (var i=0; i<n; i++) {
-						// spawn enemies
+					waveCount = Math.floor(19.1*Math.atan(wave/10));
+					currentRound = nextRound;
+					spawnCount = 0;
+					nextRound += 4*Math.sqrt(2*waveCount);
+					wave++;
+				}
+				if (t >= nextSpawn) {
+					if (spawnCount < waveCount) {
+						// spawn enemy
 						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
 						main.add(initEnemy(spawn[0], spawn[1]));
-					}
-					nextRound += wave;
-					wave++;
+						nextSpawn += Math.min(1, rate*(nextRound - currentRound)/waveCount);
+						spawnCount++;
+					} else
+						nextSpawn = nextRound;
 				}
 			}
 			
@@ -256,7 +269,7 @@
 			
             function start() {
 				path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-				main.add(initEnemy(spawn[0], spawn[1]));
+				//main.add(initEnemy(spawn[0], spawn[1]));
 				
 				main.on(C.X_MCLICK, function(evt) {
 					if (points > 0) {
@@ -284,7 +297,7 @@
 						
 						points--;
 					}
-				});
+				}).modify(mainModifer);
 				
 				health = healthBars();
 				
