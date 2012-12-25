@@ -18,6 +18,7 @@
 			
 			var scene = b();
 			var main = b();
+			var discs = b();
 			var health;
 			
 			var points = 3;
@@ -271,7 +272,7 @@
 						this.alpha = 0;
 				});
 				var t = b().circle([xi, yi], precision/2).fill('#f00').nostroke().data({'x':xi, 'y':yi, 'level':l, 'disc':c, 't':0}).modify(turretModifier);
-				main.add(c);
+				discs.add(c);
 				turret.push(t);
 				return t;
 			}
@@ -287,8 +288,11 @@
 				
 				main.on(C.X_MCLICK, function(evt) {
 					if (points > 0) {
-						var x = Math.round(evt.pos[0]/precision)*precision;
-						var y = Math.round(evt.pos[1]/precision)*precision;
+						var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
+						var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
+						
+						// make physical (somewhat)
+						grid[Math.round((evt.pos[1] - precision/2)/precision)][Math.round((evt.pos[0] - precision/2)/precision)] = 1;
 						
 						var same = -1;
 						for (var i=0; i<turret.length; i++) {
@@ -322,6 +326,7 @@
 				health = healthBars();
 				
 				scene.add(main);
+				scene.add(discs);
 				scene.add(health);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
