@@ -8,6 +8,8 @@
         <script src="../player/anm.collisions.js" type="text/javascript"></script>
 		<script src="../player/anm.builder.js" type="text/javascript"></script>
 		<script src="../player/animatron_import.js" type="text/javascript"></script>
+        
+        <link href='http://fonts.googleapis.com/css?family=Monda:700' rel='stylesheet' type='text/css'>
 
 		<script type="text/javascript">
 			var b = Builder._$, B = Builder, C = anm.C;
@@ -21,7 +23,7 @@
 			var discs = b();
 			var health;
 			
-			var points = 3;
+			var points = 6;
 			var wave = 0;
 			var waveCount = 0;
 			var nextSpawn = 1;
@@ -30,7 +32,10 @@
 			var nextRound = 1;
 			
 			var range = 72;
+			var bulletSpeed = 4;
 			var maxLevel = 5;
+			var levelAmmo = 4;
+			
 			var precision = 16;
 			
 			var spawn = [400, 400];
@@ -212,6 +217,7 @@
 			var turretModifier = function(t) {
 				var d = b(this.$).data();
 				var nt = d.t;
+				var ammo = d.ammo;
 				if (t - d.t >= 2/d.level && enemy.length > 0) {
 					// find nearest
 					var e = null;
@@ -225,11 +231,18 @@
 					}
 					if (e != null) {
 						var a = Math.atan2(e.data().y - d.y + precision/2, e.data().x - d.x + precision/2);
-						main.add(initBullet(d.x, d.y, Math.cos(a), Math.sin(a)));
+						main.add(initBullet(d.x, d.y, bulletSpeed*Math.cos(a), bulletSpeed*Math.sin(a)));
+						
+						// decrement ammo
+						ammo--;
 					}
 					nt = t;
 				}
-				b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 't':nt});
+				if (ammo <= 0) {
+					main.remove(b(this.$));
+					discs.remove(d.disc);
+				} else
+					b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 'ammo':ammo, 'disc':d.disc, 't':nt});
 			}
 			
 			var bulletModifier = function(t) {
@@ -271,7 +284,27 @@
 					else
 						this.alpha = 0;
 				});
-				var t = b().circle([xi, yi], precision/2).fill('#f00').nostroke().data({'x':xi, 'y':yi, 'level':l, 'disc':c, 't':0}).modify(turretModifier);
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						var r = d.ammo/(levelAmmo*d.level);
+						ctx.lineWidth = 3;
+						ctx.strokeStyle = '#5157a5';
+						ctx.beginPath();
+						ctx.arc(xi, yi, precision/2, 4.712, 4.712-6.283*r, true);
+						ctx.stroke();
+						ctx.closePath();
+						ctx.strokeStyle = '#f58a1f';
+						ctx.beginPath();
+						ctx.arc(xi, yi, precision/2, 4.712, 4.712-6.283*r, false);
+						ctx.stroke();
+						ctx.closePath();
+						ctx.fillStyle = '#000000';
+						ctx.font = '10pt Monda';
+						ctx.textAlign = "center";
+						ctx.fillText(''+d.level, xi, yi+5);
+					}
+				}).data({'x':xi, 'y':yi, 'level':l, 'ammo':levelAmmo*l, 'disc':c, 't':0}).modify(turretModifier);
 				discs.add(c);
 				turret.push(t);
 				return t;
@@ -291,9 +324,6 @@
 						var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
 						var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
 						
-						// make physical (somewhat)
-						grid[Math.round((evt.pos[1] - precision/2)/precision)][Math.round((evt.pos[0] - precision/2)/precision)] = 1;
-						
 						var same = -1;
 						for (var i=0; i<turret.length; i++) {
 							var d = turret[i].data();
@@ -307,10 +337,10 @@
 							main.add(initTurret(x, y, 1));
 						} else {
 							var d = turret[same].data();
-							if (d.level < maxLevel)
-								turret[same].data({'x':d.x, 'y':d.y, 'level':d.level+1, 't':d.t});
-							else
-								points++;
+							var l = d.level;
+							if (l < maxLevel)
+								l++;
+							turret[same].data({'x':d.x, 'y':d.y, 'level':l, 'ammo':levelAmmo*l, 'disc':d.disc, 't':d.t});
 						}
 						
 						points--;
