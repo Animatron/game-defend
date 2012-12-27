@@ -250,11 +250,10 @@
 				this.x = d.x + d.vx;
 				this.y = d.y + d.vy;
 				for (var i=0; i<enemy.length; i++) {
-					if (this.$.intersects(enemy[i].v)) {
+					var e = enemy[i].data();
+					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= precision) {
 						main.remove(this.$);
 						// damage other
-						var e = enemy[i].data();
-						//console.log(i, "hp at", e.hp - d.damage);
 						if (e.hp - d.damage > 0)
 							enemy[i].data({'x':e.x, 'y':e.y, 'i':e.i, 'path':e.path, 'mhp':e.mhp, 'hp':e.hp - d.damage});
 						else {
@@ -278,7 +277,15 @@
 			}
 			
 			function initTurret(xi, yi, l) {
-				var c = b().circle([xi, yi], range).fill('#f80').nostroke().modify(function(t) {
+				var c = b().paint(function(ctx) {
+					ctx.translate(xi-range, yi-range);
+					ctx.rect(0, 0, range*2, range*2);
+					var g = ctx.createRadialGradient(range, range, range-16, range, range, range);
+  					g.addColorStop(0, '#f58a1f');
+					g.addColorStop(1, 'rgba(245, 138, 31, 0)');
+					ctx.fillStyle = g;
+    				ctx.fill();
+				}).modify(function(t) {
 					if (Math.sqrt(Math.pow(mouse[0]-xi, 2) + Math.pow(mouse[1]-yi, 2)) <= range)
 						this.alpha = .5;
 					else
@@ -311,7 +318,17 @@
 			}
 			
 			function initBullet(xi, yi, vx, vy, d) {
-				var t = b().circle([0, 0], 2).fill('#00f').nostroke().data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						ctx.rect(0, 0, 12, 12);
+						var g = ctx.createRadialGradient(6, 6, 2, 6, 6, 6);
+						g.addColorStop(0, '#5157a5');
+						g.addColorStop(1, 'rgba(81, 87, 165, 0)');
+						ctx.fillStyle = g;
+						ctx.fill();
+					}
+				}).move([-6, -6]).data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
 				return t;
 			}
 			
@@ -355,8 +372,8 @@
 				
 				health = healthBars();
 				
-				scene.add(main);
 				scene.add(discs);
+				scene.add(main);
 				scene.add(health);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
