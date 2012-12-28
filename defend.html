@@ -19,7 +19,9 @@
 			var height = 480;
 			
 			var scene = b();
-			var main = b();
+			var mainp = b();
+			var maine = b();
+			var maint = b();
 			var discs = b();
 			var health;
 			
@@ -35,6 +37,7 @@
 			var bulletSpeed = 4;
 			var maxLevel = 5;
 			var levelAmmo = 4;
+			var mhp = 3;
 			
 			var precision = 16;
 			
@@ -159,13 +162,13 @@
 			function healthBars() {
 				var w = 16;
 				var h = 2;
-				var o = 32;
+				var o = 8;
 				return b().paint(function(ctx) {
 					for (var i=0; i<enemy.length; i++) {
 						var d = enemy[i].data();
 						ctx.strokeStyle = '#000';
 						ctx.strokeRect(d.x, d.y - o, w, h);
-						var fx = d.hp*w/d.mhp;
+						var fx = d.hp*w/mhp;
 						ctx.fillStyle = '#0f0';
 						ctx.fillRect(d.x, d.y - o, fx, h);
 						ctx.fillStyle = '#f00';
@@ -188,7 +191,7 @@
 					if (spawnCount < waveCount) {
 						// spawn enemy
 						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-						main.add(initEnemy(spawn[0], spawn[1]));
+						maine.add(initEnemy(spawn[0], spawn[1]));
 						nextSpawn += Math.min(1, rate*(nextRound - currentRound)/waveCount);
 						spawnCount++;
 					} else
@@ -209,7 +212,7 @@
 					var ydif = p[i][1]*precision - y;
 					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
 					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
-					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'mhp':d.mhp, 'hp':d.hp});
+					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'angle':(d.angle+.1)%6.283, 'hp':d.hp});
 					//console.log(index, this.x, this.y);
 				}
 			}
@@ -231,7 +234,7 @@
 					}
 					if (e != null) {
 						var a = Math.atan2(e.data().y - d.y + precision/2, e.data().x - d.x + precision/2);
-						main.add(initBullet(d.x, d.y, bulletSpeed*Math.cos(a), bulletSpeed*Math.sin(a)));
+						mainp.add(initBullet(d.x, d.y, bulletSpeed*Math.cos(a), bulletSpeed*Math.sin(a)));
 						
 						// decrement ammo
 						ammo--;
@@ -239,8 +242,16 @@
 					nt = t;
 				}
 				if (ammo <= 0) {
-					main.remove(b(this.$));
+					maint.remove(b(this.$));
 					discs.remove(d.disc);
+					// remove from list
+					for (var i=0; i<turret.length; i++) {
+						var f = turret[i].data();
+						if (f.x == d.x && f.y == d.y) {
+							turret.splice(i, 1);
+							break;
+						}
+					}
 				} else
 					b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 'ammo':ammo, 'disc':d.disc, 't':nt});
 			}
@@ -251,27 +262,46 @@
 				this.y = d.y + d.vy;
 				for (var i=0; i<enemy.length; i++) {
 					var e = enemy[i].data();
-					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= precision) {
-						main.remove(this.$);
+					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= .75*precision) {
+						mainp.remove(this.$);
 						// damage other
 						if (e.hp - d.damage > 0)
-							enemy[i].data({'x':e.x, 'y':e.y, 'i':e.i, 'path':e.path, 'mhp':e.mhp, 'hp':e.hp - d.damage});
+							enemy[i].data({'x':e.x, 'y':e.y, 'i':e.i, 'path':e.path, 'angle':e.angle, 'hp':e.hp - d.damage});
 						else {
-							main.remove(enemy[i]);
+							maine.remove(enemy[i]);
 							enemy.splice(i, 1);
 							i--;
 							// add points
 							points++;
+							// add explosion
+							addExplosion(e.x + precision/2, e.y + precision/2, t);
+						}
+						// add particles
+						for (var k=0; k<3; k++) {
+							var a = Math.random()*6.283;
+							addParticle(e.x + precision/2, e.y + precision/2, 2*Math.cos(a), 2*Math.sin(a));
 						}
 					}
 				}
 				if (this.x <= -2 || this.y <= -2 || this.x >= width+2 || this.y >= height+2)
-					main.remove(this.$);
+					mainp.remove(this.$);
 				b(this.$).data({'x':this.x, 'y':this.y, 'vx':d.vx, 'vy':d.vy, 'damage':d.damage});
 			}
 			
 			function initEnemy(xi, yi) {
-				var t = b().rect([precision/2, precision/2], [precision, precision]).fill('#000').data({'x':xi, 'y':yi, 'mhp':3, 'hp':3, 'path':path, 'i':0}).modify(enemyModifier);
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						for (var j=0; j<3; j++) {
+							ctx.strokeStyle = 'rgba(255, 0, 0, '+Math.pow(.5, j)+')';
+							ctx.beginPath();
+							ctx.moveTo(precision/2*(Math.cos(d.angle-.4*j) + 1), precision/2*(Math.sin(d.angle-.4*j) + 1));
+							for (var i=1; i<=d.hp; i++)
+								ctx.lineTo(precision/2*(Math.cos(d.angle+2.094*i-.4*j) + 1), precision/2*(Math.sin(d.angle+2.094*i-.4*j) + 1));
+							ctx.stroke();
+						}
+					}
+				}).data({'x':xi, 'y':yi, 'angle':0, 'hp':mhp, 'path':path, 'i':0}).modify(enemyModifier);
 				enemy.push(t);
 				return t;
 			}
@@ -321,22 +351,55 @@
 				var t = b().paint(function(ctx) {
 					var d = t.data();
 					if (d) {
-						ctx.rect(0, 0, 12, 12);
-						var g = ctx.createRadialGradient(6, 6, 2, 6, 6, 6);
+						ctx.rect(0, 0, 8, 8);
+						var g = ctx.createRadialGradient(4, 4, 1, 2, 2, 4);
 						g.addColorStop(0, '#5157a5');
 						g.addColorStop(1, 'rgba(81, 87, 165, 0)');
 						ctx.fillStyle = g;
 						ctx.fill();
 					}
-				}).move([-6, -6]).data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
+				}).move([-4, -4]).data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
 				return t;
+			}
+			
+			function addParticle(xi, yi, vx, vy) {
+				var r = .1;
+				var t = b().paint(function(ctx) {
+					ctx.rect(0, 0, 6, 6);
+					var g = ctx.createRadialGradient(3, 3, 0, 3, 3, 3);
+					g.addColorStop(0, '#ff0000');
+					g.addColorStop(1, 'rgba(255, 0, 0, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi-3, yi-3]).modify(function(t) {
+					this.x += vx;
+					this.y += vy;
+					this.sx -= r;
+					this.sy -= r;
+					this.alpha -= r;
+					if (this.sx <= 0)
+						mainp.remove(this.$);
+				});
+				mainp.add(t);
+			}
+			
+			function addExplosion(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 2*precision, 2*precision);
+					var g = ctx.createRadialGradient(precision, precision, 0, precision, precision, precision);
+					g.addColorStop(0, '#ff0000');
+					g.addColorStop(1, 'rgba(255, 0, 0, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]);
+				mainp.add(e);
 			}
 			
             function start() {
 				//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
 				//main.add(initEnemy(spawn[0], spawn[1]));
 				
-				main.on(C.X_MCLICK, function(evt) {
+				maint.on(C.X_MCLICK, function(evt) {
 					if (points > 0) {
 						var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
 						var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
@@ -351,7 +414,7 @@
 						}
 						
 						if (same == -1) {
-							main.add(initTurret(x, y, 1));
+							maint.add(initTurret(x, y, 1));
 						} else {
 							var d = turret[same].data();
 							var l = d.level;
@@ -370,11 +433,12 @@
 					mouse = evt.pos;
 				}).modify(mainModifer);
 				
-				health = healthBars();
+				//health = healthBars();
 				
 				scene.add(discs);
-				scene.add(main);
-				scene.add(health);
+				scene.add(mainp);
+				scene.add(maine);
+				scene.add(maint);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
             }
