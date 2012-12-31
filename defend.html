@@ -221,7 +221,9 @@
 				var d = b(this.$).data();
 				var nt = d.t;
 				var ammo = d.ammo;
-				if (t - d.t >= 2/d.level && enemy.length > 0) {
+				if (d.init)
+					addGather(d.x, d.y, t);
+				else if (t - d.t >= 2/d.level && enemy.length > 0) {
 					// find nearest
 					var e = null;
 					var f = width * height * width * height;
@@ -252,6 +254,8 @@
 							break;
 						}
 					}
+					// add implosion
+					addImplosion(d.x, d.y, t);
 				} else
 					b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 'ammo':ammo, 'disc':d.disc, 't':nt});
 			}
@@ -341,7 +345,7 @@
 						ctx.textAlign = "center";
 						ctx.fillText(''+d.level, xi, yi+5);
 					}
-				}).data({'x':xi, 'y':yi, 'level':l, 'ammo':levelAmmo*l, 'disc':c, 't':0}).modify(turretModifier);
+				}).data({'x':xi, 'y':yi, 'level':l, 'ammo':levelAmmo*l, 'disc':c, 't':0, 'init':true}).modify(turretModifier);
 				discs.add(c);
 				turret.push(t);
 				return t;
@@ -391,7 +395,33 @@
 					g.addColorStop(1, 'rgba(255, 0, 0, 0)');
 					ctx.fillStyle = g;
 					ctx.fill();
-				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]);
+				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function addImplosion(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, precision, precision);
+					var g = ctx.createRadialGradient(precision/2, precision/2, precision/4, precision/2, precision/2, precision/2);
+					g.addColorStop(0, '#f58a1f');
+					g.addColorStop(1, 'rgba(245, 138, 31, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([precision/2, precision/2]).scale([t, t+.3], [[1, 1], [0, 0]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function addGather(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 2*precision, 2*precision);
+					for (var i=0; i<4; i++) {
+						var g = ctx.createRadialGradient(precision+(precision-2)*Math.cos(1.571*i), precision+(precision-2)*Math.sin(1.571*i), 1, precision+(precision-2)*Math.cos(1.571*i), precision+(precision-2)*Math.sin(1.571*i), 4);
+						g.addColorStop(0, '#5157a5');
+						g.addColorStop(1, 'rgba(81, 87, 165, 0)');
+						ctx.fillStyle = g;
+						ctx.fill();
+					}
+				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.5], [[1, 1], [.5, .5]]).alpha([t, t+.5], [0, 1]).rotate([t, t+.5], [0, 3.142]).modify(function(a) {if (a > t+.5) mainp.remove(e)});
 				mainp.add(e);
 			}
 			
