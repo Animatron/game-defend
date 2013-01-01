@@ -23,6 +23,7 @@
 			var maine = b();
 			var maint = b();
 			var discs = b();
+			var debug = b();
 			var health;
 			
 			var points = 6;
@@ -39,7 +40,7 @@
 			var levelAmmo = 4;
 			var mhp = 3;
 			
-			var precision = 16;
+			var precision = 20;
 			
 			var spawn = [400, 400];
 			var target = [0, 0];
@@ -70,8 +71,8 @@
 			// fill with blocks
 			for (var i=0; i<block.length; i++) {
 				var k = block[i];
-				for (var y=k.y1/precision; y<k.y2/precision; y++) {
-					for (var x=k.x1/precision; x<k.x2/precision; x++)
+				for (var y=Math.floor(k.y1/precision); y<Math.ceil(k.y2/precision); y++) {
+					for (var x=Math.floor(k.x1/precision); x<Math.ceil(k.x2/precision); x++)
 						grid[y][x] = 1;
 				}
 			}
@@ -108,8 +109,7 @@
 					if (r <= range)
 						risk *= 1 + (range - r)/range;
 				}
-				//console.log(turret.length, "("+start.x+", "+start.y+")", "("+end.x+", "+end.y+")", risk, r);
-        		return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) * risk;
+				return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) * risk;
     		}
 					
 			function AStar(start, end) {
@@ -177,8 +177,18 @@
 				});
 			}
 			
+			function debugBlocks() {
+				return b().paint(function(ctx) {
+					for (var y=0; y<grid.length; y++)
+						for (var x=0; x<grid[y].length; x++)
+							if (grid[y][x]) {
+								ctx.fillStyle = '#ccf';
+								ctx.fillRect(x*precision, y*precision, precision, precision);
+							}
+				});
+			}
+			
 			var mainModifer = function(t) {
-				//console.log(t, nextRound, wave);
 				var rate = 2/3;
 				if (t >= nextRound) {
 					waveCount = Math.floor(19.1*Math.atan(wave/10));
@@ -213,7 +223,6 @@
 					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
 					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
 					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'angle':(d.angle+.1)%6.283, 'hp':d.hp});
-					//console.log(index, this.x, this.y);
 				}
 			}
 			
@@ -464,6 +473,9 @@
 				}).modify(mainModifer);
 				
 				//health = healthBars();
+				debug = debugBlocks();
+				
+				scene.add(debug);
 				
 				scene.add(discs);
 				scene.add(mainp);
