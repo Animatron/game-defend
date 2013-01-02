@@ -22,6 +22,7 @@
 			var mainp = b();
 			var maine = b();
 			var maint = b();
+			var maino = b();
 			var discs = b();
 			var debug = b();
 			var health;
@@ -56,7 +57,10 @@
 				this.y2 = y2;
 			}
 			
-			var block = [new Rectangle(48, 0, 128, 160)]; // this will be preset, arrays of rectangles
+			// these will be preset, arrays of rectangles
+			var zones = [new Rectangle(0, 0, 48, 60)]; // no turrets only
+			var block = [new Rectangle(48, 0, 128, 160)]; // no turrets or enemies
+			
 			var enemy = new Array();
 			var turret = new Array();
 			var grid = new Array(); // height vs width
@@ -68,12 +72,20 @@
 				for (var j=0; j<width/precision; j++)
 					grid[i][j] = 0;
 			}
+			// fill with zones
+			for (var i=0; i<zones.length; i++) {
+				var k = zones[i];
+				for (var y=Math.floor(k.y1/precision); y<Math.ceil(k.y2/precision); y++) {
+					for (var x=Math.floor(k.x1/precision); x<Math.ceil(k.x2/precision); x++)
+						grid[y][x] = 1;
+				}
+			}
 			// fill with blocks
 			for (var i=0; i<block.length; i++) {
 				var k = block[i];
 				for (var y=Math.floor(k.y1/precision); y<Math.ceil(k.y2/precision); y++) {
 					for (var x=Math.floor(k.x1/precision); x<Math.ceil(k.x2/precision); x++)
-						grid[y][x] = 1;
+						grid[y][x] = 2;
 				}
 			}
 			
@@ -85,10 +97,10 @@
 					S = y + 1,
 					E = x + 1,
 					W = x - 1,
-					$N = N > -1 && !grid[N][x],
-					$S = S < rows && !grid[S][x],
-					$E = E < cols && !grid[y][E],
-					$W = W > -1 && !grid[y][W],
+					$N = N > -1 && grid[N][x] < 2,
+					$S = S < rows && grid[S][x] < 2,
+					$E = E < cols && grid[y][E] < 2,
+					$W = W > -1 && grid[y][W] < 2,
 					result = [],
 					i = 0
 				;
@@ -182,7 +194,7 @@
 					for (var y=0; y<grid.length; y++)
 						for (var x=0; x<grid[y].length; x++)
 							if (grid[y][x]) {
-								ctx.fillStyle = '#ccf';
+								ctx.fillStyle = (grid[y][x] > 1) ? '#ccf' : '#cfc';
 								ctx.fillRect(x*precision, y*precision, precision, precision);
 							}
 				});
@@ -439,34 +451,72 @@
 				//main.add(initEnemy(spawn[0], spawn[1]));
 				
 				maint.on(C.X_MCLICK, function(evt) {
-					if (points > 0) {
-						var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
-						var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
-						
-						var same = -1;
-						for (var i=0; i<turret.length; i++) {
-							var d = turret[i].data();
-							if (x == d.x && y == d.y) {
-								same = i;
-								break;
-							}
-						}
-						
-						if (same == -1) {
-							maint.add(initTurret(x, y, 1));
+					var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
+					var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
+					
+					// check blocking
+					if (grid[Math.floor(y/precision)][Math.floor(x/precision)]) {
+						// click feedback
+						var t = b().paint(function(ctx) {
+							ctx.lineWidth = 2;
+							ctx.strokeStyle = '#f00';
+							ctx.beginPath();
+							ctx.moveTo(x-precision/2, y-precision/2);
+							ctx.lineTo(x+precision/2, y+precision/2);
+							ctx.moveTo(x+precision/2, y-precision/2);
+							ctx.lineTo(x-precision/2, y+precision/2);
+							ctx.stroke();
+						}).data({'init':true}).modify(function(a) {
+							if (t.data().init)
+								t.data({'t':a});
+							else if (a - t.data().t >= .1)
+								maino.remove(t);
+						});
+						maino.add(t);
+					} else {
+						if (points < 1) {
+							// click feedback
+							var t = b().paint(function(ctx) {
+								ctx.lineWidth = 2;
+								ctx.strokeStyle = '#f00';
+								ctx.beginPath();
+								ctx.arc(x, y, precision/2, 0, 6.283, false);
+								ctx.moveTo(x+precision/2.828, y-precision/2.828);
+								ctx.lineTo(x-precision/2.828, y+precision/2.828);
+								ctx.stroke();
+							}).data({'init':true}).modify(function(a) {
+								if (t.data().init)
+									t.data({'t':a});
+								else if (a - t.data().t >= .1)
+									maino.remove(t);
+							});
+							maino.add(t);
 						} else {
-							var d = turret[same].data();
-							var l = d.level;
-							if (l < maxLevel)
-								l++;
-							turret[same].data({'x':d.x, 'y':d.y, 'level':l, 'ammo':levelAmmo*l, 'disc':d.disc, 't':d.t});
+							var same = -1;
+							for (var i=0; i<turret.length; i++) {
+								var d = turret[i].data();
+								if (x == d.x && y == d.y) {
+									same = i;
+									break;
+								}
+							}
+							
+							if (same == -1) {
+								maint.add(initTurret(x, y, 1));
+							} else {
+								var d = turret[same].data();
+								var l = d.level;
+								if (l < maxLevel)
+									l++;
+								turret[same].data({'x':d.x, 'y':d.y, 'level':l, 'ammo':levelAmmo*l, 'disc':d.disc, 't':d.t});
+							}
+							
+							points--;
+							
+							//test code
+							//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+							//main.add(initEnemy(spawn[0], spawn[1]));
 						}
-						
-						points--;
-						
-						//test code
-						//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-						//main.add(initEnemy(spawn[0], spawn[1]));
 					}
 				}).on(C.X_MMOVE, function(evt) {
 					mouse = evt.pos;
@@ -481,6 +531,7 @@
 				scene.add(mainp);
 				scene.add(maine);
 				scene.add(maint);
+				scene.add(maino);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
             }
