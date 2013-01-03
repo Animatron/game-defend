@@ -25,7 +25,10 @@
 			var maino = b();
 			var discs = b();
 			var debug = b();
-			var health;
+			var tempui = b();
+			
+			var total = 0;
+			var cross = 0;
 			
 			var points = 6;
 			var wave = 0;
@@ -235,6 +238,18 @@
 					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
 					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
 					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'angle':(d.angle+.1)%6.283, 'hp':d.hp});
+				} else {
+					// target reached
+					for (var i=0; i<enemy.length; i++)
+						if (enemy[i] == b(this.$)) {
+							enemy.splice(i, 1);
+							break;
+						}
+					maine.remove(b(this.$));
+					cross++;
+					total++;
+					// add crash
+					addCrash(x+precision/2, y+precision/2, t);
 				}
 			}
 			
@@ -287,7 +302,7 @@
 				this.y = d.y + d.vy;
 				for (var i=0; i<enemy.length; i++) {
 					var e = enemy[i].data();
-					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= .75*precision) {
+					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= precision) {
 						mainp.remove(this.$);
 						// damage other
 						if (e.hp - d.damage > 0)
@@ -296,6 +311,7 @@
 							maine.remove(enemy[i]);
 							enemy.splice(i, 1);
 							i--;
+							total++;
 							// add points
 							points++;
 							// add explosion
@@ -420,6 +436,18 @@
 				mainp.add(e);
 			}
 			
+			function addCrash(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 4*precision, 4*precision);
+					var g = ctx.createRadialGradient(2*precision, 2*precision, 0, 2*precision, 2*precision, 2*precision);
+					g.addColorStop(0, '#0000ff');
+					g.addColorStop(1, 'rgba(0, 0, 255, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([2*precision, 2*precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
 			function addImplosion(xi, yi, t) {
 				var e = b().paint(function(ctx) {
 					ctx.rect(0, 0, precision, precision);
@@ -444,6 +472,15 @@
 					}
 				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.5], [[1, 1], [.5, .5]]).alpha([t, t+.5], [0, 1]).rotate([t, t+.5], [0, 3.142]).modify(function(a) {if (a > t+.5) mainp.remove(e)});
 				mainp.add(e);
+			}
+			
+			function makeUI() {
+				return b().paint(function(ctx) {
+					ctx.fillStyle = '#000000';
+					ctx.font = '14pt Monda';
+					ctx.textAlign = "right";
+					ctx.fillText((total ? (100*(1 - cross/total)).toFixed(2) : '0.00')+'%', width, 16);
+				});
 			}
 			
             function start() {
@@ -524,6 +561,7 @@
 				
 				//health = healthBars();
 				debug = debugBlocks();
+				tempui = makeUI();
 				
 				scene.add(debug);
 				
@@ -532,6 +570,8 @@
 				scene.add(maine);
 				scene.add(maint);
 				scene.add(maino);
+				
+				scene.add(tempui);
 				
 				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
             }
