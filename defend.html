@@ -30,7 +30,10 @@
 			var total = 0;
 			var cross = 0;
 			
+			var ptsInc = .001;
+			var maxPoints = 8;
 			var points = 6;
+			
 			var wave = 0;
 			var waveCount = 0;
 			var nextSpawn = 1;
@@ -198,7 +201,7 @@
 					for (var y=0; y<grid.length; y++)
 						for (var x=0; x<grid[y].length; x++)
 							if (grid[y][x]) {
-								ctx.fillStyle = (grid[y][x] > 1) ? '#ccf' : '#cfc';
+								ctx.fillStyle = (grid[y][x] > 1) ? 'rgba(128, 128, 255, .5)' : 'rgba(128, 255, 128, .5)';
 								ctx.fillRect(x*precision, y*precision, precision, precision);
 							}
 				});
@@ -223,6 +226,10 @@
 					} else
 						nextSpawn = nextRound;
 				}
+				
+				// increase points
+				if (points < maxPoints)
+					points += ptsInc;
 			}
 			
 			var enemyModifier = function(t) {
@@ -314,7 +321,10 @@
 							i--;
 							total++;
 							// add points
-							points++;
+							if (points+1 <= maxPoints)
+								points++;
+							else
+								points = maxPoints;
 							// add explosion
 							addExplosion(e.x + precision/2, e.y + precision/2, t);
 						}
@@ -504,10 +514,10 @@
 			function makeUI() {
 				return b().paint(function(ctx) {
 					ctx.fillStyle = '#000000';
-					ctx.font = '14pt Monda';
+					ctx.font = '12pt Monda';
 					ctx.textAlign = "right";
-					ctx.fillText((total ? (100*(1 - cross/total)).toFixed(2) : '0.00')+'%', width, 16);
-					ctx.fillText(total, width, 32);
+					ctx.fillText((total ? (100*(1 - cross/total)).toFixed(2) : '0.00')+'% \/'+total, width, 14);
+					ctx.fillText(points.toFixed(3), width, 28);
 				});
 			}
 			
@@ -616,7 +626,7 @@
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
-		<canvas id="canvas" width="640" height="480"></canvas>
+		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px;"></canvas>
 
 	</body>
 
