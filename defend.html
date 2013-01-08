@@ -622,11 +622,11 @@
         </script>
       </head>
 
-	<body onload="start();">
+	<body onload="start();" onclick="scene.anim.fire(C.X_MCLICK, {pos:[window.event.clientX, window.event.clientY]});">
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
-		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px;"></canvas>
+		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
 
 	</body>
 
