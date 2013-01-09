@@ -13,6 +13,7 @@
 
 		<script type="text/javascript">
 			var b = Builder._$, B = Builder, C = anm.C;
+			var player;
 			
 			// canvas
 			var width = 640;
@@ -208,6 +209,9 @@
 			}
 			
 			var mainModifer = function(t) {
+				// test
+				console.log(t);
+				
 				var rate = 2/3;
 				if (t >= nextRound) {
 					waveCount = Math.floor(19.1*Math.atan(wave/10));
@@ -617,12 +621,21 @@
 				
 				scene.add(tempui);
 				
-				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene).play();
+				player = createPlayer('canvas', {'mode': C.M_DYNAMIC});
+				player.load(scene).play();
             }
+			
+			// register mouse events
+			document.onclick = function() {
+				player.anim.fire(C.X_MCLICK, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			}
+			document.onmousemove = function() {
+				player.anim.fire(C.X_MMOVE, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			}
         </script>
       </head>
 
-	<body onload="start();" onclick="scene.anim.fire(C.X_MCLICK, {pos:[window.event.clientX, window.event.clientY]});">
+	<body onload="start();">
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
