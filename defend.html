@@ -5,31 +5,110 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<script src="../player/vendor/matrix.js" type="text/javascript"></script>
 		<script src="../player/anm.player.js" type="text/javascript"></script>
+        <script src="../player/anm.collisions.js" type="text/javascript"></script>
 		<script src="../player/anm.builder.js" type="text/javascript"></script>
 		<script src="../player/animatron_import.js" type="text/javascript"></script>
+        
+        <link href='http://fonts.googleapis.com/css?family=Monda:700' rel='stylesheet' type='text/css'>
 
 		<script type="text/javascript">
 			var b = Builder._$, B = Builder, C = anm.C;
+			var player;
 			
 			// canvas
 			var width = 640;
 			var height = 480;
-			var scene1 = b();
 			
-			var block = new Array();
+			var scene = b();
+			var mainp = b();
+			var maine = b();
+			var maint = b();
+			var maino = b();
+			var discs = b();
+			var debug = b();
+			var tempui = b();
 			
-			// A* implementation from http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
+			var total = 0;
+			var cross = 0;
 			
-			function successors(x, y, grid, rows, cols){
+			var ptsInc = .001;
+			var maxPoints = 8;
+			var points = 6;
+			
+			var wave = 0;
+			var waveCount = 0;
+			var nextSpawn = 1;
+			var spawnCount = 0;
+			var lastRound = 0;
+			var nextRound = 1;
+			
+			var range = 72;
+			var bulletSpeed = 4;
+			var maxLevel = 5;
+			var levelAmmo = 4;
+			var mhp = 3;
+			
+			var precision = 20;
+			
+			// values in pixel units, program will convert
+			var spawn = [400, 400];
+			var target = [40, 160];
+			
+			var mouse = [0, 0];
+			
+			var path;
+			
+			function Rectangle(x1, y1, x2, y2) {
+				this.x1 = x1;
+				this.y1 = y1;
+				this.x2 = x2;
+				this.y2 = y2;
+			}
+			
+			// these will be preset, arrays of rectangles
+			var zones = [new Rectangle(0, 0, 48, 60)]; // no turrets only
+			var block = [new Rectangle(48, 0, 128, 160)]; // no turrets or enemies
+			
+			var enemy = new Array();
+			var turret = new Array();
+			var grid = new Array(); // height vs width
+			
+			// create grid
+			grid = new Array(height/precision);
+			for (var i=0; i<height/precision; i++) {
+				grid[i] = new Array(width/precision);
+				for (var j=0; j<width/precision; j++)
+					grid[i][j] = 0;
+			}
+			// fill with zones
+			for (var i=0; i<zones.length; i++) {
+				var k = zones[i];
+				for (var y=Math.floor(k.y1/precision); y<Math.ceil(k.y2/precision); y++) {
+					for (var x=Math.floor(k.x1/precision); x<Math.ceil(k.x2/precision); x++)
+						grid[y][x] = 1;
+				}
+			}
+			// fill with blocks
+			for (var i=0; i<block.length; i++) {
+				var k = block[i];
+				for (var y=Math.floor(k.y1/precision); y<Math.ceil(k.y2/precision); y++) {
+					for (var x=Math.floor(k.x1/precision); x<Math.ceil(k.x2/precision); x++)
+						grid[y][x] = 2;
+				}
+			}
+			
+			// A* implementation based on http://webreflection.blogspot.com/2006/10/javascript-path-finder-with-star.html
+			
+			function successors(x, y, rows, cols){
 				var
 					N = y - 1,
 					S = y + 1,
 					E = x + 1,
 					W = x - 1,
-					$N = N > -1 && !grid[N][x],
-					$S = S < rows && !grid[S][x],
-					$E = E < cols && !grid[y][E],
-					$W = W > -1 && !grid[y][W],
+					$N = N > -1 && grid[N][x] < 2,
+					$S = S < rows && grid[S][x] < 2,
+					$E = E < cols && grid[y][E] < 2,
+					$W = W > -1 && grid[y][W] < 2,
 					result = [],
 					i = 0
 				;
@@ -40,17 +119,24 @@
 				return result;
 			}
 			
-			function distance(start, end, f1, f2) {
-        		return f1(start.x - end.x) + f1(start.y - end.y);
+			function distanceTo(start, end) {
+				// divide weight by turret distance
+				var risk = 1;
+				if (turret.length > 0)
+				for (var i=0; i<turret.length; i++) {
+					var d = turret[i].data();
+					var r = Math.sqrt(Math.pow(precision*start.x - d.x, 2) + Math.pow(precision*start.y - d.y, 2));
+					if (r <= range)
+						risk *= 1 + (range - r)/range;
+				}
+				return (Math.abs(start.x - end.x) + Math.abs(start.y - end.y)) * risk;
     		}
 					
-			function AStar(grid, start, end) {
+			function AStar(start, end) {
 				var
 					cols = grid[0].length,
 					rows = grid.length,
 					limit = cols * rows,
-					f1 = Math.abs,
-					f2 = Math.max,
 					list = {},
 					result = [],
 					open = [{x:start[0], y:start[1], f:0, g:0, v:start[0]+start[1]*cols}],
@@ -77,7 +163,7 @@
 							adj.f = adj.g = 0;
 							adj.v = adj.x + adj.y * cols;
 							if(!(adj.v in list)){
-								adj.f = (adj.g = current.g + distance(adj, current, f1, f2)) + distance(adj, end, f1, f2);
+								adj.f = (adj.g = current.g + distanceTo(adj, current)) + distanceTo(adj, end);
 								open[length++] = adj;
 								list[adj.v] = 1;
 							}
@@ -93,10 +179,459 @@
 				return result;
 			}
 			
-            function start() {
+			function healthBars() {
+				var w = 16;
+				var h = 2;
+				var o = 8;
+				return b().paint(function(ctx) {
+					for (var i=0; i<enemy.length; i++) {
+						var d = enemy[i].data();
+						ctx.strokeStyle = '#000';
+						ctx.strokeRect(d.x, d.y - o, w, h);
+						var fx = d.hp*w/mhp;
+						ctx.fillStyle = '#0f0';
+						ctx.fillRect(d.x, d.y - o, fx, h);
+						ctx.fillStyle = '#f00';
+						ctx.fillRect(d.x + fx, d.y - o, w - fx, h);
+					}
+				});
+			}
+			
+			function debugBlocks() {
+				return b().paint(function(ctx) {
+					for (var y=0; y<grid.length; y++)
+						for (var x=0; x<grid[y].length; x++)
+							if (grid[y][x]) {
+								ctx.fillStyle = (grid[y][x] > 1) ? 'rgba(128, 128, 255, .5)' : 'rgba(128, 255, 128, .5)';
+								ctx.fillRect(x*precision, y*precision, precision, precision);
+							}
+				});
+			}
+			
+			var mainModifer = function(t) {
+				// test
+				console.log(t);
 				
-				createPlayer('canvas', {'mode': C.M_DYNAMIC}).load(scene1).play();
+				var rate = 2/3;
+				if (t >= nextRound) {
+					waveCount = Math.floor(19.1*Math.atan(wave/10));
+					currentRound = nextRound;
+					spawnCount = 0;
+					nextRound += 4*Math.sqrt(2*waveCount);
+					wave++;
+				}
+				if (t >= nextSpawn) {
+					if (spawnCount < waveCount) {
+						// spawn enemy
+						path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+						maine.add(initEnemy(spawn[0], spawn[1]));
+						nextSpawn += Math.min(1, rate*(nextRound - currentRound)/waveCount);
+						spawnCount++;
+					} else
+						nextSpawn = nextRound;
+				}
+				
+				// increase points
+				if (points < maxPoints)
+					points += ptsInc;
+			}
+			
+			var enemyModifier = function(t) {
+				var speed = 1;
+				var d = b(this.$).data();
+				var x = d.x;
+				var y = d.y;
+				var index = d.i + speed/precision;
+				var p = d.path;
+				var i = Math.ceil(index);
+				if (i < p.length) {
+					var xdif = p[i][0]*precision - x;
+					var ydif = p[i][1]*precision - y;
+					this.x = x + (xdif < 0 ? -1 : xdif > 0 ? 1 : 0)*speed;
+					this.y = y + (ydif < 0 ? -1 : ydif > 0 ? 1 : 0)*speed;
+					b(this.$).data({'x':this.x, 'y':this.y, 'i':index, 'path':p, 'angle':(d.angle+.1)%6.283, 'hp':d.hp});
+				} else {
+					// target reached
+					for (var i=0; i<enemy.length; i++)
+						if (enemy[i] == b(this.$)) {
+							enemy.splice(i, 1);
+							break;
+						}
+					maine.remove(b(this.$));
+					cross++;
+					total++;
+					// add crash
+					addCrash(x+precision/2, y+precision/2, t);
+				}
+			}
+			
+			var turretModifier = function(t) {
+				var d = b(this.$).data();
+				var nt = d.t;
+				var ammo = d.ammo;
+				if (d.init)
+					addGather(d.x, d.y, t);
+				else if (t - d.t >= 2/d.level && enemy.length > 0) {
+					// find nearest
+					var e = null;
+					var f = width * height * width * height;
+					for (var i=0; i<enemy.length; i++) {
+						var g = Math.sqrt(Math.pow(enemy[i].data().x - d.x, 2) + Math.pow(enemy[i].data().y - d.y, 2));
+						if (g < f && g <= range) {
+							f = g;
+							e = enemy[i];
+						}
+					}
+					if (e != null) {
+						var a = Math.atan2(e.data().y - d.y + precision/2, e.data().x - d.x + precision/2);
+						mainp.add(initBullet(d.x, d.y, bulletSpeed*Math.cos(a), bulletSpeed*Math.sin(a)));
+						
+						// decrement ammo
+						ammo--;
+					}
+					nt = t;
+				}
+				if (ammo <= 0) {
+					maint.remove(b(this.$));
+					discs.remove(d.disc);
+					// remove from list
+					for (var i=0; i<turret.length; i++) {
+						var f = turret[i].data();
+						if (f.x == d.x && f.y == d.y) {
+							turret.splice(i, 1);
+							break;
+						}
+					}
+					// add implosion
+					addImplosion(d.x, d.y, t);
+				} else
+					b(this.$).data({'x':d.x, 'y':d.y, 'level':d.level, 'ammo':ammo, 'disc':d.disc, 't':nt});
+			}
+			
+			var bulletModifier = function(t) {
+				var d = b(this.$).data();
+				this.x = d.x + d.vx;
+				this.y = d.y + d.vy;
+				for (var i=0; i<enemy.length; i++) {
+					var e = enemy[i].data();
+					if (Math.sqrt((this.x - e.x)*(this.x - e.x) + (this.y - e.y)*(this.y - e.y)) <= precision) {
+						mainp.remove(this.$);
+						// damage other
+						if (e.hp - d.damage > 0)
+							enemy[i].data({'x':e.x, 'y':e.y, 'i':e.i, 'path':e.path, 'angle':e.angle, 'hp':e.hp - d.damage});
+						else {
+							maine.remove(enemy[i]);
+							enemy.splice(i, 1);
+							i--;
+							total++;
+							// add points
+							if (points+1 <= maxPoints)
+								points++;
+							else
+								points = maxPoints;
+							// add explosion
+							addExplosion(e.x + precision/2, e.y + precision/2, t);
+						}
+						// add particles
+						for (var k=0; k<3; k++) {
+							var a = Math.random()*6.283;
+							addParticle(e.x + precision/2, e.y + precision/2, 2*Math.cos(a), 2*Math.sin(a));
+						}
+					}
+				}
+				if (this.x <= -2 || this.y <= -2 || this.x >= width+2 || this.y >= height+2)
+					mainp.remove(this.$);
+				b(this.$).data({'x':this.x, 'y':this.y, 'vx':d.vx, 'vy':d.vy, 'damage':d.damage});
+			}
+			
+			function initEnemy(xi, yi) {
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						for (var j=0; j<3; j++) {
+							ctx.strokeStyle = 'rgba(255, 0, 0, '+Math.pow(.5, j)+')';
+							ctx.beginPath();
+							ctx.moveTo(precision/2*(Math.cos(d.angle-.4*j) + 1), precision/2*(Math.sin(d.angle-.4*j) + 1));
+							for (var i=1; i<=d.hp; i++)
+								ctx.lineTo(precision/2*(Math.cos(d.angle+2.094*i-.4*j) + 1), precision/2*(Math.sin(d.angle+2.094*i-.4*j) + 1));
+							ctx.stroke();
+						}
+					}
+				}).data({'x':xi, 'y':yi, 'angle':0, 'hp':mhp, 'path':path, 'i':0}).modify(enemyModifier);
+				enemy.push(t);
+				return t;
+			}
+			
+			function initTurret(xi, yi, l) {
+				var c = b().paint(function(ctx) {
+					ctx.translate(xi-range, yi-range);
+					ctx.rect(0, 0, range*2, range*2);
+					var g = ctx.createRadialGradient(range, range, range-16, range, range, range);
+  					g.addColorStop(0, '#f58a1f');
+					g.addColorStop(1, 'rgba(245, 138, 31, 0)');
+					ctx.fillStyle = g;
+    				ctx.fill();
+				}).modify(function(t) {
+					if (Math.sqrt(Math.pow(mouse[0]-xi, 2) + Math.pow(mouse[1]-yi, 2)) <= range)
+						this.alpha = .5;
+					else
+						this.alpha = 0;
+				});
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						var r = d.ammo/(levelAmmo*d.level);
+						ctx.lineWidth = 3;
+						ctx.strokeStyle = '#5157a5';
+						ctx.beginPath();
+						ctx.arc(xi, yi, precision/2, 4.712, 4.712-6.283*r, true);
+						ctx.stroke();
+						ctx.closePath();
+						ctx.strokeStyle = '#f58a1f';
+						ctx.beginPath();
+						ctx.arc(xi, yi, precision/2, 4.712, 4.712-6.283*r, false);
+						ctx.stroke();
+						ctx.closePath();
+						ctx.fillStyle = '#000000';
+						ctx.font = '10pt Monda';
+						ctx.textAlign = "center";
+						ctx.fillText(''+d.level, xi, yi+5);
+					}
+				}).data({'x':xi, 'y':yi, 'level':l, 'ammo':levelAmmo*l, 'disc':c, 't':0, 'init':true}).modify(turretModifier);
+				discs.add(c);
+				turret.push(t);
+				return t;
+			}
+			
+			function initBullet(xi, yi, vx, vy, d) {
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						ctx.rect(0, 0, 8, 8);
+						var g = ctx.createRadialGradient(4, 4, 1, 2, 2, 4);
+						g.addColorStop(0, '#5157a5');
+						g.addColorStop(1, 'rgba(81, 87, 165, 0)');
+						ctx.fillStyle = g;
+						ctx.fill();
+					}
+				}).move([-4, -4]).data({'x':xi, 'y':yi, 'vx':vx, 'vy':vy, 'damage':1}).modify(bulletModifier);
+				return t;
+			}
+			
+			function initTarget(xi, yi) {
+				var r = precision/2 - 2;
+				var t = b().paint(function(ctx) {
+					var d = t.data();
+					if (d) {
+						ctx.strokeStyle = '#00f';
+						ctx.beginPath();
+						ctx.arc(xi, yi, r, 0, 6.283, false);
+						ctx.stroke();
+						ctx.closePath();
+						for (var i=0; i<6.283; i+=2.094) {
+							ctx.translate(xi+r*Math.cos(d.a+i)-3, yi+r*Math.sin(d.a+i)-3);
+							ctx.rect(0, 0, 6, 6);
+							var g = ctx.createRadialGradient(3, 3, 1, 3, 3, 3);
+							g.addColorStop(0, '#00f');
+							g.addColorStop(1, 'rgba(0, 0, 255, 0)');
+							ctx.fillStyle = g;
+							ctx.fill();
+							ctx.translate(3-xi-r*Math.cos(d.a+i), 3-yi-r*Math.sin(d.a+i));
+						}
+						t.data({'a': (d.a+6.2) % 6.284});
+					}
+				}).data({'a':0});
+				return t;
+			}
+			
+			function addParticle(xi, yi, vx, vy) {
+				var r = .1;
+				var t = b().paint(function(ctx) {
+					ctx.rect(0, 0, 6, 6);
+					var g = ctx.createRadialGradient(3, 3, 0, 3, 3, 3);
+					g.addColorStop(0, '#ff0000');
+					g.addColorStop(1, 'rgba(255, 0, 0, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi-3, yi-3]).modify(function(t) {
+					this.x += vx;
+					this.y += vy;
+					this.sx -= r;
+					this.sy -= r;
+					this.alpha -= r;
+					if (this.sx <= 0)
+						mainp.remove(this.$);
+				});
+				mainp.add(t);
+			}
+			
+			function addExplosion(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 2*precision, 2*precision);
+					var g = ctx.createRadialGradient(precision, precision, 0, precision, precision, precision);
+					g.addColorStop(0, '#ff0000');
+					g.addColorStop(1, 'rgba(255, 0, 0, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function addCrash(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 4*precision, 4*precision);
+					var g = ctx.createRadialGradient(2*precision, 2*precision, 0, 2*precision, 2*precision, 2*precision);
+					g.addColorStop(0, '#0000ff');
+					g.addColorStop(1, 'rgba(0, 0, 255, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([2*precision, 2*precision]).scale([t, t+.3], [[0, 0], [1, 1]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function addImplosion(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, precision, precision);
+					var g = ctx.createRadialGradient(precision/2, precision/2, precision/4, precision/2, precision/2, precision/2);
+					g.addColorStop(0, '#f58a1f');
+					g.addColorStop(1, 'rgba(245, 138, 31, 0)');
+					ctx.fillStyle = g;
+					ctx.fill();
+				}).move([xi, yi]).reg([precision/2, precision/2]).scale([t, t+.3], [[1, 1], [0, 0]]).alpha([t, t+.3], [1, 0]).modify(function(a) {if (a > t+.3) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function addGather(xi, yi, t) {
+				var e = b().paint(function(ctx) {
+					ctx.rect(0, 0, 2*precision, 2*precision);
+					for (var i=0; i<4; i++) {
+						var g = ctx.createRadialGradient(precision+(precision-2)*Math.cos(1.571*i), precision+(precision-2)*Math.sin(1.571*i), 1, precision+(precision-2)*Math.cos(1.571*i), precision+(precision-2)*Math.sin(1.571*i), 4);
+						g.addColorStop(0, '#5157a5');
+						g.addColorStop(1, 'rgba(81, 87, 165, 0)');
+						ctx.fillStyle = g;
+						ctx.fill();
+					}
+				}).move([xi, yi]).reg([precision, precision]).scale([t, t+.5], [[1, 1], [.5, .5]]).alpha([t, t+.5], [0, 1]).rotate([t, t+.5], [0, 3.142]).modify(function(a) {if (a > t+.5) mainp.remove(e)});
+				mainp.add(e);
+			}
+			
+			function makeUI() {
+				return b().paint(function(ctx) {
+					ctx.fillStyle = '#000000';
+					ctx.font = '12pt Monda';
+					ctx.textAlign = "right";
+					ctx.fillText((total ? (100*(1 - cross/total)).toFixed(2) : '0.00')+'% \/'+total, width, 14);
+					ctx.fillText(points.toFixed(3), width, 28);
+				});
+			}
+			
+            function start() {
+				//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+				//main.add(initEnemy(spawn[0], spawn[1]));
+				
+				maint.on(C.X_MCLICK, function(evt) {
+					var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
+					var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
+					
+					// check blocking
+					if (grid[Math.floor(y/precision)][Math.floor(x/precision)]) {
+						// click feedback
+						var t = b().paint(function(ctx) {
+							ctx.lineWidth = 2;
+							ctx.strokeStyle = '#f00';
+							ctx.beginPath();
+							ctx.moveTo(x-precision/2, y-precision/2);
+							ctx.lineTo(x+precision/2, y+precision/2);
+							ctx.moveTo(x+precision/2, y-precision/2);
+							ctx.lineTo(x-precision/2, y+precision/2);
+							ctx.stroke();
+						}).data({'init':true}).modify(function(a) {
+							if (t.data().init)
+								t.data({'t':a});
+							else if (a - t.data().t >= .1)
+								maino.remove(t);
+						});
+						maino.add(t);
+					} else {
+						if (points < 1) {
+							// click feedback
+							var t = b().paint(function(ctx) {
+								ctx.lineWidth = 2;
+								ctx.strokeStyle = '#f00';
+								ctx.beginPath();
+								ctx.arc(x, y, precision/2, 0, 6.283, false);
+								ctx.moveTo(x+precision/2.828, y-precision/2.828);
+								ctx.lineTo(x-precision/2.828, y+precision/2.828);
+								ctx.stroke();
+							}).data({'init':true}).modify(function(a) {
+								if (t.data().init)
+									t.data({'t':a});
+								else if (a - t.data().t >= .1)
+									maino.remove(t);
+							});
+							maino.add(t);
+						} else {
+							var same = -1;
+							for (var i=0; i<turret.length; i++) {
+								var d = turret[i].data();
+								if (x == d.x && y == d.y) {
+									same = i;
+									break;
+								}
+							}
+							
+							if (same == -1) {
+								maint.add(initTurret(x, y, 1));
+							} else {
+								var d = turret[same].data();
+								var l = d.level;
+								if (l < maxLevel)
+									l++;
+								turret[same].data({'x':d.x, 'y':d.y, 'level':l, 'ammo':levelAmmo*l, 'disc':d.disc, 't':d.t});
+							}
+							
+							points--;
+							
+							//test code
+							//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
+							//main.add(initEnemy(spawn[0], spawn[1]));
+						}
+					}
+				}).on(C.X_MMOVE, function(evt) {
+					mouse = evt.pos;
+				}).modify(mainModifer);
+				
+				// convert to grid units
+				target[0] = Math.round(target[0]/precision);
+				target[1] = Math.round(target[1]/precision);
+				// create target
+				maint.add(initTarget(precision*(target[0]+.5), precision*(target[1]+.5)));
+				
+				//health = healthBars();
+				debug = debugBlocks();
+				tempui = makeUI();
+				
+				scene.add(debug);
+				
+				scene.add(discs);
+				scene.add(mainp);
+				scene.add(maine);
+				scene.add(maint);
+				scene.add(maino);
+				
+				scene.add(tempui);
+				
+				player = createPlayer('canvas', {'mode': C.M_DYNAMIC});
+				player.load(scene).play();
             }
+			
+			// register mouse events
+			document.onclick = function() {
+				player.anim.fire(C.X_MCLICK, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			}
+			document.onmousemove = function() {
+				player.anim.fire(C.X_MMOVE, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			}
         </script>
       </head>
 
@@ -104,7 +639,7 @@
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
-		<canvas id="canvas" width="640" height="480"></canvas>
+		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
 
 	</body>
 
