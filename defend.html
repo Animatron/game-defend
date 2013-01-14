@@ -16,8 +16,9 @@
 			var player;
 			
 			// canvas
-			var width = 640;
-			var height = 480;
+			var precision = 20;
+			var width = Math.floor(window.innerWidth/precision)*precision;
+			var height = Math.floor(window.innerHeight/precision)*precision;
 			
 			var scene = b();
 			var mainp = b();
@@ -47,8 +48,6 @@
 			var maxLevel = 5;
 			var levelAmmo = 4;
 			var mhp = 3;
-			
-			var precision = 20;
 			
 			// values in pixel units, program will convert
 			var spawn = [400, 400];
@@ -534,7 +533,7 @@
 					var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
 					
 					// check blocking
-					if (grid[Math.floor(y/precision)][Math.floor(x/precision)]) {
+					if (grid[Math.floor(y/precision)][Math.floor(x/precision)] == 1) {
 						// click feedback
 						var t = b().paint(function(ctx) {
 							ctx.lineWidth = 2;
@@ -552,7 +551,7 @@
 								maino.remove(t);
 						});
 						maino.add(t);
-					} else {
+					} else if (grid[Math.floor(y/precision)][Math.floor(x/precision)] == 0) {
 						if (points < 1) {
 							// click feedback
 							var t = b().paint(function(ctx) {
@@ -621,16 +620,34 @@
 				
 				scene.add(tempui);
 				
-				player = createPlayer('canvas', {'mode': C.M_DYNAMIC});
+				player = createPlayer('canvas', {'mode': C.M_DYNAMIC, 'anim': {'width': window.innerWidth, 'height': window.innerHeight}});
 				player.load(scene).play();
             }
 			
 			// register mouse events
-			document.onclick = function() {
-				player.anim.fire(C.X_MCLICK, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			document.onclick = function(e) {
+				var ev = !e ? window.event : e;
+				var posX, posY;
+				if (ev.pageX) {
+					posX = ev.pageX;
+					posY = ev.pageY;
+				} else if (ev.clientX) {
+					posX = ev.clientX;
+					posY = ev.clientY;
+				}
+				player.anim.fire(C.X_MCLICK, {pos:[posX - player.canvas.offsetLeft, posY - player.canvas.offsetTop]});
 			}
-			document.onmousemove = function() {
-				player.anim.fire(C.X_MMOVE, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			document.onmousemove = function(e) {
+				var ev = !e ? window.event : e;
+				var posX, posY;
+				if (ev.pageX) {
+					posX = ev.pageX;
+					posY = ev.pageY;
+				} else if (ev.clientX) {
+					posX = ev.clientX;
+					posY = ev.clientY;
+				}
+				player.anim.fire(C.X_MMOVE, {pos:[posX - player.canvas.offsetLeft, posY - player.canvas.offsetTop]});
 			}
         </script>
       </head>
@@ -639,7 +656,7 @@
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
-		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
+		<canvas id="canvas" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
 
 	</body>
 
