@@ -16,25 +16,25 @@
 			var player;
 			
 			// canvas
-			var precision = 20;
+			var precision = 20; // grid's unit size
 			var width = Math.floor(window.innerWidth/precision)*precision;
 			var height = Math.floor(window.innerHeight/precision)*precision;
 			
 			var scene = b();
-			var mainp = b();
-			var maine = b();
-			var maint = b();
-			var maino = b();
-			var discs = b();
-			var debug = b();
-			var tempui = b();
+			var mainp = b(); // particles
+			var maine = b(); // enemies
+			var maint = b(); // turrets
+			var maino = b(); // bullets
+			var discs = b(); // radius
+			var debug = b(); // block areas
+			var tempui = b(); // temporary ui overlay
 			
-			var total = 0;
-			var cross = 0;
+			var total = 0; // number of deceased enemies
+			var cross = 0; // number of enemies that breech
 			
-			var ptsInc = .001;
-			var maxPoints = 8;
-			var points = 6;
+			var ptsInc = .001; // points gained per frame
+			var maxPoints = 8; // points cap
+			var points = 6; // initial points
 			
 			var wave = 0;
 			var waveCount = 0;
@@ -43,15 +43,15 @@
 			var lastRound = 0;
 			var nextRound = 1;
 			
-			var range = 72;
-			var bulletSpeed = 4;
-			var maxLevel = 5;
-			var levelAmmo = 4;
-			var mhp = 3;
+			var range = 72; // turret firing radius
+			var bulletSpeed = 4; // bullet distance per sec
+			var maxLevel = 5; // max turret level
+			var levelAmmo = 4; // additional ammo per level
+			var mhp = 3; // enemy hp
 			
 			// values in pixel units, program will convert
-			var spawn = [400, 400];
-			var target = [40, 160];
+			var spawn = [400, 400]; // spawn point
+			var target = [40, 160]; // target point
 			
 			var mouse = [0, 0];
 			
