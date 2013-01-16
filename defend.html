@@ -66,7 +66,7 @@
 			
 			// these will be preset, arrays of rectangles
 			var zones = [new Rectangle(0, 0, 48, 60)]; // no turrets only
-			var block = [new Rectangle(48, 0, 128, 160)]; // no turrets or enemies
+			var block = [new Rectangle(48, 0, 128, 160), new Rectangle(320, 270, 480, 320)]; // no turrets or enemies
 			
 			var enemy = new Array();
 			var turret = new Array();
@@ -208,9 +208,6 @@
 			}
 			
 			var mainModifer = function(t) {
-				// test
-				console.log(t);
-				
 				var rate = 2/3;
 				if (t >= nextRound) {
 					waveCount = Math.floor(19.1*Math.atan(wave/10));
@@ -524,10 +521,7 @@
 				});
 			}
 			
-            function start() {
-				//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-				//main.add(initEnemy(spawn[0], spawn[1]));
-				
+            function start() {				
 				maint.on(C.X_MCLICK, function(evt) {
 					var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
 					var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
@@ -590,10 +584,6 @@
 							}
 							
 							points--;
-							
-							//test code
-							//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-							//main.add(initEnemy(spawn[0], spawn[1]));
 						}
 					}
 				}).on(C.X_MMOVE, function(evt) {
