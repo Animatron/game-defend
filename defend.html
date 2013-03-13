@@ -16,24 +16,25 @@
 			var player;
 			
 			// canvas
-			var width = 640;
-			var height = 480;
+			var precision = 20; // grid's unit size
+			var width = Math.floor(window.innerWidth/precision)*precision;
+			var height = Math.floor(window.innerHeight/precision)*precision;
 			
 			var scene = b();
-			var mainp = b();
-			var maine = b();
-			var maint = b();
-			var maino = b();
-			var discs = b();
-			var debug = b();
-			var tempui = b();
+			var mainp = b(); // particles
+			var maine = b(); // enemies
+			var maint = b(); // turrets
+			var maino = b(); // bullets
+			var discs = b(); // radius
+			var debug = b(); // block areas
+			var tempui = b(); // temporary ui overlay
 			
-			var total = 0;
-			var cross = 0;
+			var total = 0; // number of deceased enemies
+			var cross = 0; // number of enemies that breech
 			
-			var ptsInc = .001;
-			var maxPoints = 8;
-			var points = 6;
+			var ptsInc = .001; // points gained per frame
+			var maxPoints = 8; // points cap
+			var points = 6; // initial points
 			
 			var wave = 0;
 			var waveCount = 0;
@@ -42,17 +43,15 @@
 			var lastRound = 0;
 			var nextRound = 1;
 			
-			var range = 72;
-			var bulletSpeed = 4;
-			var maxLevel = 5;
-			var levelAmmo = 4;
-			var mhp = 3;
-			
-			var precision = 20;
+			var range = 72; // turret firing radius
+			var bulletSpeed = 4; // bullet distance per sec
+			var maxLevel = 5; // max turret level
+			var levelAmmo = 4; // additional ammo per level
+			var mhp = 3; // enemy hp
 			
 			// values in pixel units, program will convert
-			var spawn = [400, 400];
-			var target = [40, 160];
+			var spawn = [400, 400]; // spawn point
+			var target = [40, 160]; // target point
 			
 			var mouse = [0, 0];
 			
@@ -67,7 +66,7 @@
 			
 			// these will be preset, arrays of rectangles
 			var zones = [new Rectangle(0, 0, 48, 60)]; // no turrets only
-			var block = [new Rectangle(48, 0, 128, 160)]; // no turrets or enemies
+			var block = [new Rectangle(48, 0, 128, 160), new Rectangle(320, 270, 480, 320)]; // no turrets or enemies
 			
 			var enemy = new Array();
 			var turret = new Array();
@@ -209,9 +208,6 @@
 			}
 			
 			var mainModifer = function(t) {
-				// test
-				console.log(t);
-				
 				var rate = 2/3;
 				if (t >= nextRound) {
 					waveCount = Math.floor(19.1*Math.atan(wave/10));
@@ -525,16 +521,13 @@
 				});
 			}
 			
-            function start() {
-				//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-				//main.add(initEnemy(spawn[0], spawn[1]));
-				
+            function start() {				
 				maint.on(C.X_MCLICK, function(evt) {
 					var x = Math.round((evt.pos[0] - precision/2)/precision)*precision + precision/2;
 					var y = Math.round((evt.pos[1] - precision/2)/precision)*precision + precision/2;
 					
 					// check blocking
-					if (grid[Math.floor(y/precision)][Math.floor(x/precision)]) {
+					if (grid[Math.floor(y/precision)][Math.floor(x/precision)] == 1) {
 						// click feedback
 						var t = b().paint(function(ctx) {
 							ctx.lineWidth = 2;
@@ -552,7 +545,7 @@
 								maino.remove(t);
 						});
 						maino.add(t);
-					} else {
+					} else if (grid[Math.floor(y/precision)][Math.floor(x/precision)] == 0) {
 						if (points < 1) {
 							// click feedback
 							var t = b().paint(function(ctx) {
@@ -591,10 +584,6 @@
 							}
 							
 							points--;
-							
-							//test code
-							//path = AStar([Math.floor(spawn[0]/precision), Math.floor(spawn[1]/precision)], target);
-							//main.add(initEnemy(spawn[0], spawn[1]));
 						}
 					}
 				}).on(C.X_MMOVE, function(evt) {
@@ -621,16 +610,34 @@
 				
 				scene.add(tempui);
 				
-				player = createPlayer('canvas', {'mode': C.M_DYNAMIC});
+				player = createPlayer('canvas', {'mode': C.M_DYNAMIC, 'anim': {'width': window.innerWidth, 'height': window.innerHeight}});
 				player.load(scene).play();
             }
 			
 			// register mouse events
-			document.onclick = function() {
-				player.anim.fire(C.X_MCLICK, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			document.onclick = function(e) {
+				var ev = !e ? window.event : e;
+				var posX, posY;
+				if (ev.pageX) {
+					posX = ev.pageX;
+					posY = ev.pageY;
+				} else if (ev.clientX) {
+					posX = ev.clientX;
+					posY = ev.clientY;
+				}
+				player.anim.fire(C.X_MCLICK, {pos:[posX - player.canvas.offsetLeft, posY - player.canvas.offsetTop]});
 			}
-			document.onmousemove = function() {
-				player.anim.fire(C.X_MMOVE, {pos:[window.event.clientX - player.canvas.offsetLeft, window.event.clientY - player.canvas.offsetTop]});
+			document.onmousemove = function(e) {
+				var ev = !e ? window.event : e;
+				var posX, posY;
+				if (ev.pageX) {
+					posX = ev.pageX;
+					posY = ev.pageY;
+				} else if (ev.clientX) {
+					posX = ev.clientX;
+					posY = ev.clientY;
+				}
+				player.anim.fire(C.X_MMOVE, {pos:[posX - player.canvas.offsetLeft, posY - player.canvas.offsetTop]});
 			}
         </script>
       </head>
@@ -639,7 +646,7 @@
 		<h1>Tower Defense - Animatron HTML5 Player Demo</h1>
 
 		<!-- canvases -->
-		<canvas id="canvas" width="640" height="480" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
+		<canvas id="canvas" style="z-index:1; position:absolute; left:0px; top:0px; pointer-events:none;"></canvas>
 
 	</body>
 
